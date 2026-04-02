@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UID Collector — Simple NFC Tools</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  .back { display: inline-block; color: #64748b; text-decoration: none; font-size: 0.85rem; margin-bottom: 0.75rem; }
+  .back:hover { color: #94a3b8; }
+  h1 { font-size: 1.1rem; text-align: center; color: #94a3b8; margin-bottom: 1rem; }
+
+  /* Feedback banner */
+  #banner {
+    text-align: center;
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    transition: opacity 0.3s;
+    min-height: 4.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #banner.idle { background: #1e293b; color: #64748b; }
+  #banner.success { background: #166534; color: #bbf7d0; }
+  #banner.duplicate { background: #92400e; color: #fef3c7; }
+  #banner.error { background: #7f1d1d; color: #fecaca; }
+  #banner .uid { font-family: monospace; font-size: 0.95rem; margin-top: 0.25rem; font-weight: 400; }
+
+  /* Count display */
+  #count {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 1rem 0 0.25rem;
+  }
+  #count-label {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 1rem;
+  }
+
+  /* Token list */
+  #list {
+    list-style: none;
+    background: #1e293b;
+    border-radius: 10px;
+    max-height: 35vh;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+  }
+  #list:empty { display: none; }
+  #list li {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #334155;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    display: flex;
+    justify-content: space-between;
+  }
+  #list li:last-child { border-bottom: none; }
+  #list li .num { color: #475569; font-size: 0.75rem; }
+  #list li.flash { animation: flash 0.8s; }
+  @keyframes flash { 0% { background: #166534; } 100% { background: transparent; } }
+
+  /* Buttons */
+  .actions { display: flex; gap: 0.5rem; }
+  .actions button {
+    flex: 1;
+    padding: 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  #copy-btn { background: #2563eb; color: #fff; }
+  #copy-btn:disabled { background: #1e3a5f; color: #475569; }
+  #clear-btn { background: #334155; color: #94a3b8; }
+  #clear-btn:disabled { background: #1e293b; color: #334155; }
+
+  /* Scan toggle */
+  #scan-btn {
+    display: block;
+    width: 100%;
+    padding: 0.65rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    border: 2px solid #334155;
+    border-radius: 10px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+  }
+  #scan-btn.scanning { border-color: #16a34a; color: #4ade80; }
+  #scan-btn.scanning::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-right: 0.5rem; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Copy toast */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2563eb;
+    color: #fff;
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<a href="../" class="back">&larr; All Tools</a>
+<h1>UID Collector</h1>
+
+<button id="scan-btn">Tap to start scanning</button>
+
+<div id="banner" class="idle">Hold a token to your phone</div>
+
+<div id="count">0</div>
+<p id="count-label">unique tokens collected</p>
+
+<ul id="list"></ul>
+
+<div class="actions">
+  <button id="copy-btn" disabled>Copy All UIDs</button>
+  <button id="clear-btn" disabled>Clear</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const scanBtn = document.getElementById('scan-btn');
+const banner = document.getElementById('banner');
+const countEl = document.getElementById('count');
+const list = document.getElementById('list');
+const copyBtn = document.getElementById('copy-btn');
+const clearBtn = document.getElementById('clear-btn');
+const toastEl = document.getElementById('toast');
+
+const uids = [];
+const uidSet = new Set();
+let scanning = false;
+let abortController = null;
+let bannerTimeout = null;
+
+function showBanner(type, line1, line2) {
+  clearTimeout(bannerTimeout);
+  banner.className = type;
+  banner.innerHTML = line1 + (line2 ? `<div class="uid">${line2}</div>` : '');
+  if (type !== 'idle') {
+    bannerTimeout = setTimeout(() => {
+      banner.className = 'idle';
+      banner.innerHTML = scanning ? 'Ready — hold next token' : 'Hold a token to your phone';
+    }, 2000);
+  }
+}
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 1500);
+}
+
+function updateUI() {
+  countEl.textContent = uids.length;
+  copyBtn.disabled = uids.length === 0;
+  clearBtn.disabled = uids.length === 0;
+}
+
+function addUID(uid) {
+  if (uidSet.has(uid)) {
+    showBanner('duplicate', 'Duplicate — already collected', uid);
+    return;
+  }
+  uidSet.add(uid);
+  uids.push(uid);
+
+  const li = document.createElement('li');
+  li.innerHTML = `<span>${uid}</span><span class="num">#${uids.length}</span>`;
+  li.classList.add('flash');
+  list.prepend(li);
+
+  showBanner('success', 'Token added!', uid);
+  updateUI();
+}
+
+async function startScan() {
+  if (!('NDEFReader' in window)) {
+    showBanner('error', 'WebNFC not supported', 'Use Chrome on Android');
+    return;
+  }
+
+  try {
+    abortController = new AbortController();
+    const reader = new NDEFReader();
+    await reader.scan({ signal: abortController.signal });
+
+    scanning = true;
+    scanBtn.textContent = 'Scanning active';
+    scanBtn.classList.add('scanning');
+    showBanner('idle', 'Ready — hold next token');
+
+    reader.onreading = (event) => {
+      const uid = event.serialNumber.toUpperCase();
+      addUID(uid);
+    };
+
+    reader.onreadingerror = () => {
+      showBanner('error', 'Read error — try again', '');
+    };
+  } catch (err) {
+    showBanner('error', 'Could not start scanner', err.message);
+  }
+}
+
+function stopScan() {
+  if (abortController) abortController.abort();
+  scanning = false;
+  scanBtn.textContent = 'Tap to start scanning';
+  scanBtn.classList.remove('scanning');
+  showBanner('idle', 'Scanning stopped');
+}
+
+scanBtn.addEventListener('click', () => {
+  scanning ? stopScan() : startScan();
+});
+
+copyBtn.addEventListener('click', async () => {
+  const text = uids.join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  showToast(`Copied ${uids.length} UIDs`);
+});
+
+clearBtn.addEventListener('click', () => {
+  uids.length = 0;
+  uidSet.clear();
+  list.innerHTML = '';
+  updateUI();
+  showBanner('idle', scanning ? 'Ready — hold next token' : 'Hold a token to your phone');
+});
+</script>
+
+</body>
+</html>

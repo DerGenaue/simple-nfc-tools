@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple NFC Tools</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
+  .tools { display: flex; flex-direction: column; gap: 0.75rem; }
+  .tool-card {
+    display: block;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-decoration: none;
+    color: #e2e8f0;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .tool-card:hover { border-color: #2563eb; background: #1e3a5f; }
+  .tool-card h2 { font-size: 1.1rem; margin-bottom: 0.35rem; }
+  .tool-card p { font-size: 0.85rem; color: #94a3b8; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<h1>Simple NFC Tools</h1>
+<p class="subtitle">Browser-based NFC utilities using WebNFC</p>
+
+<div class="tools">
+  <a href="uid-collector/" class="tool-card">
+    <h2>UID Collector</h2>
+    <p>Scan NFC tokens one after another, de-duplicate, and copy all unique UIDs to clipboard.</p>
+  </a>
+</div>
+
+</body>
+</html>
