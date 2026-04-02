@@ -5,22 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UID Collector — Simple NFC Tools</title>
 <style>
+  :root {
+    --bg: #f5f5f5; --fg: #1e293b; --muted: #64748b;
+    --surface: #fff; --surface-border: #e2e8f0;
+    --banner-idle-bg: #e2e8f0; --banner-idle-fg: #64748b;
+    --list-border: #e2e8f0; --list-item-fg: #334155; --list-num: #94a3b8;
+    --scan-border: #d1d5db; --scan-fg: #64748b;
+    --copy-bg: #2563eb; --copy-disabled-bg: #93c5fd; --copy-disabled-fg: #c7d2fe;
+    --clear-bg: #e2e8f0; --clear-fg: #64748b; --clear-disabled-bg: #f1f5f9; --clear-disabled-fg: #cbd5e1;
+    --toggle-bg: #e2e8f0; --toggle-fg: #475569;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a; --fg: #e2e8f0; --muted: #64748b;
+    --surface: #1e293b; --surface-border: #334155;
+    --banner-idle-bg: #1e293b; --banner-idle-fg: #64748b;
+    --list-border: #334155; --list-item-fg: #cbd5e1; --list-num: #475569;
+    --scan-border: #334155; --scan-fg: #94a3b8;
+    --copy-bg: #2563eb; --copy-disabled-bg: #1e3a5f; --copy-disabled-fg: #475569;
+    --clear-bg: #334155; --clear-fg: #94a3b8; --clear-disabled-bg: #1e293b; --clear-disabled-fg: #334155;
+    --toggle-bg: #334155; --toggle-fg: #94a3b8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a; --fg: #e2e8f0; --muted: #64748b;
+      --surface: #1e293b; --surface-border: #334155;
+      --banner-idle-bg: #1e293b; --banner-idle-fg: #64748b;
+      --list-border: #334155; --list-item-fg: #cbd5e1; --list-num: #475569;
+      --scan-border: #334155; --scan-fg: #94a3b8;
+      --copy-bg: #2563eb; --copy-disabled-bg: #1e3a5f; --copy-disabled-fg: #475569;
+      --clear-bg: #334155; --clear-fg: #94a3b8; --clear-disabled-bg: #1e293b; --clear-disabled-fg: #334155;
+      --toggle-bg: #334155; --toggle-fg: #94a3b8;
+    }
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: system-ui, sans-serif;
     max-width: 480px;
     margin: 0 auto;
     padding: 1rem;
-    background: #0f172a;
-    color: #e2e8f0;
+    background: var(--bg);
+    color: var(--fg);
     min-height: 100vh;
+    transition: background 0.2s, color 0.2s;
   }
 
-  .back { display: inline-block; color: #64748b; text-decoration: none; font-size: 0.85rem; margin-bottom: 0.75rem; }
-  .back:hover { color: #94a3b8; }
-  h1 { font-size: 1.1rem; text-align: center; color: #94a3b8; margin-bottom: 1rem; }
+  .back { display: inline-block; color: var(--muted); text-decoration: none; font-size: 0.85rem; margin-bottom: 0.75rem; }
+  .back:hover { color: var(--fg); }
+  h1 { font-size: 1.1rem; text-align: center; color: var(--muted); margin-bottom: 1rem; }
 
-  /* Feedback banner */
   #banner {
     text-align: center;
     padding: 1.25rem 1rem;
@@ -35,30 +68,18 @@
     align-items: center;
     justify-content: center;
   }
-  #banner.idle { background: #1e293b; color: #64748b; }
+  #banner.idle { background: var(--banner-idle-bg); color: var(--banner-idle-fg); }
   #banner.success { background: #166534; color: #bbf7d0; }
   #banner.duplicate { background: #92400e; color: #fef3c7; }
   #banner.error { background: #7f1d1d; color: #fecaca; }
   #banner .uid { font-family: monospace; font-size: 0.95rem; margin-top: 0.25rem; font-weight: 400; }
 
-  /* Count display */
-  #count {
-    text-align: center;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin: 1rem 0 0.25rem;
-  }
-  #count-label {
-    text-align: center;
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 1rem;
-  }
+  #count { text-align: center; font-size: 2.5rem; font-weight: 700; margin: 1rem 0 0.25rem; }
+  #count-label { text-align: center; font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
 
-  /* Token list */
   #list {
     list-style: none;
-    background: #1e293b;
+    background: var(--surface);
     border-radius: 10px;
     max-height: 35vh;
     overflow-y: auto;
@@ -67,19 +88,18 @@
   #list:empty { display: none; }
   #list li {
     padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--list-border);
     font-family: monospace;
     font-size: 0.85rem;
-    color: #cbd5e1;
+    color: var(--list-item-fg);
     display: flex;
     justify-content: space-between;
   }
   #list li:last-child { border-bottom: none; }
-  #list li .num { color: #475569; font-size: 0.75rem; }
+  #list li .num { color: var(--list-num); font-size: 0.75rem; }
   #list li.flash { animation: flash 0.8s; }
   @keyframes flash { 0% { background: #166534; } 100% { background: transparent; } }
 
-  /* Buttons */
   .actions { display: flex; gap: 0.5rem; }
   .actions button {
     flex: 1;
@@ -89,36 +109,36 @@
     border: none;
     border-radius: 10px;
     cursor: pointer;
+    transition: background 0.2s;
   }
-  #copy-btn { background: #2563eb; color: #fff; }
-  #copy-btn:disabled { background: #1e3a5f; color: #475569; }
-  #clear-btn { background: #334155; color: #94a3b8; }
-  #clear-btn:disabled { background: #1e293b; color: #334155; }
+  #copy-btn { background: var(--copy-bg); color: #fff; }
+  #copy-btn:disabled { background: var(--copy-disabled-bg); color: var(--copy-disabled-fg); }
+  #clear-btn { background: var(--clear-bg); color: var(--clear-fg); }
+  #clear-btn:disabled { background: var(--clear-disabled-bg); color: var(--clear-disabled-fg); }
 
-  /* Scan toggle */
   #scan-btn {
     display: block;
     width: 100%;
     padding: 0.65rem;
     margin-bottom: 1rem;
     font-size: 0.85rem;
-    border: 2px solid #334155;
+    border: 2px solid var(--scan-border);
     border-radius: 10px;
     background: transparent;
-    color: #94a3b8;
+    color: var(--scan-fg);
     cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
   }
   #scan-btn.scanning { border-color: #16a34a; color: #4ade80; }
   #scan-btn.scanning::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-right: 0.5rem; animation: blink 1s infinite; }
   @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  /* Copy toast */
   .toast {
     position: fixed;
     bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
-    background: #2563eb;
+    background: var(--copy-bg);
     color: #fff;
     padding: 0.6rem 1.25rem;
     border-radius: 8px;
@@ -129,9 +149,29 @@
     pointer-events: none;
   }
   .toast.show { opacity: 1; }
+
+  #theme-toggle {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: var(--toggle-bg);
+    color: var(--toggle-fg);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
 </style>
 </head>
 <body>
+
+<button id="theme-toggle" aria-label="Toggle theme"></button>
 
 <a href="../" class="back">&larr; All Tools</a>
 <h1>UID Collector</h1>
@@ -153,6 +193,30 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* Theme toggle */
+const toggle = document.getElementById('theme-toggle');
+const root = document.documentElement;
+
+function getEffectiveTheme() {
+  const saved = localStorage.getItem('theme');
+  if (saved) return saved;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+  root.setAttribute('data-theme', theme);
+  toggle.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+
+applyTheme(getEffectiveTheme());
+
+toggle.addEventListener('click', () => {
+  const next = getEffectiveTheme() === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+});
+
+/* NFC scanner */
 const scanBtn = document.getElementById('scan-btn');
 const banner = document.getElementById('banner');
 const countEl = document.getElementById('count');
